@@ -181,14 +181,11 @@ impl ClientPool for SearchClientPool {
             if cost_ord != Ordering::Equal {
                 return cost_ord;
             }
-            left.metadata
-                .split_metadata
-                .split_id
-                .cmp(&right.metadata.split_metadata.split_id)
+            left.split_id.cmp(&right.split_id)
         });
 
         for job in jobs {
-            sort_by_rendez_vous_hash(&mut nodes, &job.metadata.split_metadata.split_id);
+            sort_by_rendez_vous_hash(&mut nodes, &job.split_id);
             // choose one of the the first two nodes based on least loaded
             let chosen_node_index: usize = if nodes.len() >= 2 {
                 if nodes[0].load > nodes[1].load {
@@ -233,7 +230,6 @@ mod tests {
 
     use quickwit_cluster::cluster::{read_host_key, Cluster};
     use quickwit_cluster::test_utils::{available_port, test_cluster};
-    use quickwit_metastore::{SplitMetadata, SplitMetadataAndFooterOffsets};
 
     use crate::client_pool::search_client_pool::create_search_service_client;
     use crate::client_pool::{ClientPool, Job};
@@ -303,16 +299,6 @@ mod tests {
         Ok(())
     }
 
-    fn mock_bundle_and_split_metadata(id: &str) -> SplitMetadataAndFooterOffsets {
-        SplitMetadataAndFooterOffsets {
-            split_metadata: SplitMetadata {
-                split_id: id.to_string(),
-                ..Default::default()
-            },
-            ..Default::default()
-        }
-    }
-
     #[tokio::test]
     async fn test_search_client_pool_single_node_assign_jobs() -> anyhow::Result<()> {
         let tmp_dir = tempfile::tempdir()?;
@@ -326,19 +312,19 @@ mod tests {
 
         let jobs = vec![
             Job {
-                metadata: mock_bundle_and_split_metadata("split1"),
+                split_id: "split1".to_string(),
                 cost: 1,
             },
             Job {
-                metadata: mock_bundle_and_split_metadata("split2"),
+                split_id: "split2".to_string(),
                 cost: 2,
             },
             Job {
-                metadata: mock_bundle_and_split_metadata("split3"),
+                split_id: "split3".to_string(),
                 cost: 3,
             },
             Job {
-                metadata: mock_bundle_and_split_metadata("split4"),
+                split_id: "split4".to_string(),
                 cost: 4,
             },
         ];
@@ -350,19 +336,19 @@ mod tests {
             create_search_service_client(swim_addr_to_grpc_addr(listen_addr)).await?,
             vec![
                 Job {
-                    metadata: mock_bundle_and_split_metadata("split4"),
+                    split_id: "split4".to_string(),
                     cost: 4,
                 },
                 Job {
-                    metadata: mock_bundle_and_split_metadata("split3"),
+                    split_id: "split3".to_string(),
                     cost: 3,
                 },
                 Job {
-                    metadata: mock_bundle_and_split_metadata("split2"),
+                    split_id: "split2".to_string(),
                     cost: 2,
                 },
                 Job {
-                    metadata: mock_bundle_and_split_metadata("split1"),
+                    split_id: "split1".to_string(),
                     cost: 1,
                 },
             ],
